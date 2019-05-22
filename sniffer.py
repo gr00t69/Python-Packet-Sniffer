@@ -81,19 +81,26 @@ def main():
         pcap.write(raw_data)
         eth = Ethernet(raw_data)
 
-        print('\nEthernet Frame:')
-        print(TAB_1 + 'Destination: {}, Source: {}, Protocol: {}'.format(
-            eth.dest_mac, eth.src_mac, eth.proto))
+        # print('\nEthernet Frame:')
+        # print(TAB_1 + 'Destination: {}, Source: {}, Protocol: {}'.format(
+        #     eth.dest_mac, eth.src_mac, eth.proto))
 
         # IPv4
-        if eth.proto == 8:
+        if eth.prototype == 2048:
             ipv4 = IPv4(eth.data)
             showIpv4(ipv4)
-        else:
+        elif eth.prototype == 34525:
             ipv6 = IPv6(eth.data)
-            print(TAB_1 + 'IPv6 Packet:')
-            print(TAB_2 + 'Version: {}, priority: {}, flow_label: {}'.format(
-                ipv6.version, ipv6.priority, ipv6.flow_label))
+            # print(TAB_1 + 'IPv6 Packet:')
+            print(ipv6.__dict__)
+            # print(TAB_2 + 'Version: {}, priority: {}, flow_label: {}, pyload_legth:{}'.format(
+            #     ipv6.version, ipv6.priority, ipv6.flow_label, ipv6.pyload_legth))
+            # print('Ethernet Data:')
+            # print(format_multi_line(DATA_TAB_1, eth.data))
+        else:
+            if  eth.prototype == 2054:
+                print("ARP protocol:")  
+            print(eth.prototype)
             print('Ethernet Data:')
             print(format_multi_line(DATA_TAB_1, eth.data))
 
