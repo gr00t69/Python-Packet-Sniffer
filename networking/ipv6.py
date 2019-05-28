@@ -11,15 +11,14 @@ class IPv6:
         self.pyload_legth = (raw_data[4]<<8)+raw_data[5]
         self.next_header = raw_data[6]
         self.hop_limit = raw_data[7]
-
-        self.source_addres =0
-        self.destination_addres =0
-        for i in range(8, 11):
-            self.source_addres = self.source_addres <<8 + raw_data[i]
-            self.destination_addres = self.destination_addres << 8 +raw_data[i+4]
-            
-        
-
+        self.source_address = ""
+        self.destination_address = ""
+        for i in range(8, 24):
+            self.source_addres =self.source_addres +("{:02x}".format(raw_data[i]))
+            self.destination_addres =self.destination_addres +("{:02x}".format(raw_data[i+16]))
+            if(i%2!=0):
+                self.source_addres = self.source_addres+":"
+                self.destination_addres = self.destination_addres+":"
 
         # self.ttl, self.proto, src, target = struct.unpack('! 8x B B 2x 4s 4s', raw_data[:20])
         # self.src = self.ipv6(src)
