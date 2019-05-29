@@ -89,7 +89,7 @@ def main():
         # IPv4
         if eth.prototype == 2048:
             ipv4 = IPv4(eth.data)
-            showIpv4(ipv4)
+            # showIpv4(ipv4)
         elif eth.prototype == 34525:
             ipv6 = IPv6(eth.data)
             print(TAB_1 + 'IPv6 Packet:')
