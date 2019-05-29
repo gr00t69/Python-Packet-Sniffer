@@ -89,11 +89,13 @@ def main():
         # IPv4
         if eth.prototype == 2048:
             ipv4 = IPv4(eth.data)
-            # showIpv4(ipv4)
+            showIpv4(ipv4)
         elif eth.prototype == 34525:
             ipv6 = IPv6(eth.data)
             print(TAB_1 + 'IPv6 Packet:')
             print(ipv6.__dict__)
+            if(ipv6.next_header==58):
+                print(ipv6.extension_header.__dict__)
         else:
             if  eth.prototype == 2054:
                 print("ARP protocol:")  
