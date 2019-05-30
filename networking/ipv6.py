@@ -12,7 +12,7 @@ class IPv6:
         self.pyload_legth, self.next_header, self.hop_limit = struct.unpack(
             '! H B B', raw_data[4:8])  
         self.source_address = get_ipv6_address(raw_data[8:24])
-        self.destination_address2 = get_ipv6_address(raw_data[24:40])
+        self.destination_address = get_ipv6_address(raw_data[24:40])
         self.data = raw_data[40:]
         self.extension_header = self.extract_hetencion_header()
 

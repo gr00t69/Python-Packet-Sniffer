@@ -8,6 +8,8 @@ from networking.tcp import TCP
 from networking.udp import UDP
 from networking.pcap import Pcap
 from networking.http import HTTP
+import sys
+
 
 TAB_1 = '\t - '
 TAB_2 = '\t\t - '
@@ -74,6 +76,9 @@ def showIpv4(ipv4):
 
 
 def main():
+    filter = ['ipv4', 'ipv6', 'other']
+    if len(sys.argv)>1:
+        filter = sys.argv[1:]
     pcap = Pcap('capture.pcap')
     conn = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
 
@@ -87,16 +92,18 @@ def main():
         #     eth.dest_mac, eth.src_mac, eth.proto))
 
         # IPv4
-        if eth.prototype == 2048:
+        if eth.prototype == 2048 and 'ipv4' in filter:
             ipv4 = IPv4(eth.data)
             showIpv4(ipv4)
-        elif eth.prototype == 34525:
+        elif eth.prototype == 34525 and 'ipv6' in filter:
             ipv6 = IPv6(eth.data)
             print(TAB_1 + 'IPv6 Packet:')
+            # if(ipv6.extension_header!=None):
             print(ipv6.__dict__)
             if(ipv6.next_header==58):
+                print(TAB_1+ 'ICMPv6: ')
                 print(ipv6.extension_header.__dict__)
-        else:
+        elif  'other' in filter:
             if  eth.prototype == 2054:
                 print("ARP protocol:")  
             print("Prototype: {}".format(eth.prototype))
