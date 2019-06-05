@@ -14,13 +14,13 @@ class IPv6:
         self.source_address = get_ipv6_address(raw_data[8:24])
         self.destination_address = get_ipv6_address(raw_data[24:40])
         self.data = raw_data[40:]
-        self.extension_header = self.extract_hetencion_header()
+        self.extension_header = self.extract_extension_header()
 
     def ipv6(self, addr):
         return '.'.join(map(str, addr))
 
-    def extract_hetencion_header(self):
-        if self.next_header == 58:
-            return ICMPv6(self.data)
+    def extract_extension_header(self):
+        # if self.next_header == 58:
+        #     return ICMPv6(self.data)
         
         return None
