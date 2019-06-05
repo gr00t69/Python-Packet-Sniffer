@@ -20,7 +20,7 @@ class IPv6:
         return '.'.join(map(str, addr))
 
     def extract_extension_header(self):
-        # if self.next_header == 58:
-        #     return ICMPv6(self.data)
+        if self.next_header == 58:
+            return ICMPv6(self.data)
         
         return None
