@@ -9,7 +9,9 @@ from networking.udp import UDP
 from networking.pcap import Pcap
 from networking.http import HTTP
 import sys
-
+import json
+import time
+import asyncio
 
 TAB_1 = '\t - '
 TAB_2 = '\t\t - '
@@ -73,44 +75,63 @@ def showIpv4(ipv4):
         print(TAB_1 + 'Other IPv4 Data:')
         print(format_multi_line(DATA_TAB_2, ipv4.data))
 
+fila = []
 
-
-def main():
+def show():
     filter = ['ipv4', 'ipv6', 'other']
+    idx = 0
     if len(sys.argv)>1:
         filter = sys.argv[1:]
+    print("[s] Filter: {}".format(filter))
+    global fila
+    while True:
+        print("[s] {} {}".format(idx, len(fila)))  
+        if idx >= len(fila):
+            time.sleep( 0.5 )
+            continue
+        eth = fila[idx]
+        idx = idx+1
+        # IPv4
+        if eth.prototype == 2048 and 'ipv4' in filter:
+            print(TAB_1 + 'IPv4 Packet:')
+            print( eth.toJSON())
+        elif eth.prototype == 34525 and 'ipv6' in filter:
+            print(TAB_1 + 'IPv6 Packet:')
+            print( eth.toJSON())
+        elif  'other' in filter:
+            if  eth.prototype == 2054:
+                print("ARP protocol:")  
+            print("Prototype: {}".format(eth.prototype))
+            print( eth.toJSON())
+
+        time.sleep( 0.1)
+
+
+
+def read():
     pcap = Pcap('capture.pcap')
     conn = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
-
+    global fila
     while True:
         raw_data, addr = conn.recvfrom(65535)
         pcap.write(raw_data)
         eth = Ethernet(raw_data)
 
-        # print('\nEthernet Frame:')
-        # print(TAB_1 + 'Destination: {}, Source: {}, Protocol: {}'.format(
-        #     eth.dest_mac, eth.src_mac, eth.proto))
-
-        # IPv4
-        if eth.prototype == 2048 and 'ipv4' in filter:
-            ipv4 = IPv4(eth.data)
-            showIpv4(ipv4)
-        elif eth.prototype == 34525 and 'ipv6' in filter:
-            ipv6 = IPv6(eth.data)
-            print(TAB_1 + 'IPv6 Packet:')
-            # if(ipv6.extension_header!=None):
-            print(ipv6.__dict__)
-            if(ipv6.next_header==58):
-                print(TAB_1+ 'ICMPv6: ')
-                print(ipv6.extension_header.__dict__)
-        elif  'other' in filter:
-            if  eth.prototype == 2054:
-                print("ARP protocol:")  
-            print("Prototype: {}".format(eth.prototype))
-            print('Ethernet Data:')
-            print(format_multi_line(DATA_TAB_1, eth.data))
+        fila.append(eth)  
+        print("[r] fila:{}".format(len(fila)))  
+        time.sleep( 0.3)
 
     pcap.close()
 
+from multiprocessing import Process, Pool
+import threading
+
+def main():  
+    global fila
+    x = threading.Thread(target=read)
+    x.start()
+
+    y = threading.Thread(target=show)
+    y.start()
 
 main()
