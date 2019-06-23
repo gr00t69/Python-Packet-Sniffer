@@ -16,6 +16,43 @@ import time
 import asyncio
 import threading
 
+from http.server import BaseHTTPRequestHandler, HTTPServer
+
+thRead = None
+
+def startRead():
+    global thRead
+    if(thRead == None):
+        thRead = threading.Thread(target=read)
+        thRead.start()
+
+# HTTPRequestHandler class
+class SnifferHTTPServer_RequestHandler(BaseHTTPRequestHandler):
+
+    # GET
+    def do_GET(self):
+        startRead()
+        content = self.handle_http()
+        self.wfile.write(content)
+
+    def handle_http(self):
+        response_content = ""
+        response_content = open("index.html")
+        response_content = response_content.read()
+
+        self.send_response(200)
+        self.send_header('Content-type', "text/html")
+        self.end_headers()
+        return bytes(response_content, "UTF-8")
+
+def runServer():
+  print('starting server...')
+
+  server_address = ('127.0.0.1', 8081)
+  httpd = HTTPServer(server_address, SnifferHTTPServer_RequestHandler)
+  print('running server...')
+  httpd.serve_forever()
+
 fila = []
 
 def read():
@@ -51,10 +88,13 @@ async def show(websocket, path):
         await websocket.send(eth.toJSON())
         await asyncio.sleep(0.2)
 
-x = threading.Thread(target=read)
-x.start()
+def startSocket():
+    start_server = websockets.serve(show, '127.0.0.1', 5678)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()
 
-start_server = websockets.serve(show, '127.0.0.1', 5678)
+if __name__ == "__main__":
+    thServer = threading.Thread(target=runServer)
+    thServer.start()
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+    startSocket()

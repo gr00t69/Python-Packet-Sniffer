@@ -97,6 +97,8 @@ def show():
             print( eth.toJSON())
         elif eth.prototype == 34525 and 'ipv6' in filter:
             print(TAB_1 + 'IPv6 Packet:')
+
+            ipv6 = eth.data
             print( eth.toJSON())
         elif  'other' in filter:
             if  eth.prototype == 2054:

@@ -3,6 +3,7 @@ from general import *
 from networking.icmpv6 import ICMPv6
 from networking.hop_by_hop import HopByHop
 from networking.abstract_protocol import AbstractProtocol
+from networking.udp import UDP
 
 class IPv6(AbstractProtocol):
 
@@ -28,4 +29,6 @@ class IPv6(AbstractProtocol):
             return ICMPv6(data)
         elif self.next_header == 0:
             return HopByHop(data)
+        elif self.next_header == 17:
+            return UDP(data)
         return None
