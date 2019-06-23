@@ -8,84 +8,30 @@ from networking.tcp import TCP
 from networking.udp import UDP
 from networking.pcap import Pcap
 from networking.http import HTTP
+# pip install websockets
+import websockets
+import argparse
 import sys
 import json
 import time
 import asyncio
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from multiprocessing import Process, Pool
+import threading
 
+idShow = 0
+thRead = None
 TAB_1 = '\t - '
-TAB_2 = '\t\t - '
-TAB_3 = '\t\t\t - '
-TAB_4 = '\t\t\t\t - '
-
-DATA_TAB_1 = '\t   '
-DATA_TAB_2 = '\t\t   '
-DATA_TAB_3 = '\t\t\t   '
-DATA_TAB_4 = '\t\t\t\t   '
-
-
-
-def showIpv4(ipv4):
-    print(TAB_1 + 'IPv4 Packet:')
-    print(TAB_2 + 'Version: {}, Header Length: {}, TTL: {},'.format(ipv4.version, ipv4.header_length, ipv4.ttl))
-    print(TAB_2 + 'Protocol: {}, Source: {}, Target: {}'.format(ipv4.proto, ipv4.src, ipv4.target))
-
-    # ICMP
-    if ipv4.proto == 1:
-        icmp = ICMP(ipv4.data)
-        print(TAB_1 + 'ICMP Packet:')
-        print(TAB_2 + 'Type: {}, Code: {}, Checksum: {},'.format(icmp.type, icmp.code, icmp.checksum))
-        print(TAB_2 + 'ICMP Data:')
-        print(format_multi_line(DATA_TAB_3, icmp.data))
-
-    # TCP
-    elif ipv4.proto == 6:
-        tcp = TCP(ipv4.data)
-        print(TAB_1 + 'TCP Segment:')
-        print(TAB_2 + 'Source Port: {}, Destination Port: {}'.format(tcp.src_port, tcp.dest_port))
-        print(TAB_2 + 'Sequence: {}, Acknowledgment: {}'.format(tcp.sequence, tcp.acknowledgment))
-        print(TAB_2 + 'Flags:')
-        print(TAB_3 + 'URG: {}, ACK: {}, PSH: {}'.format(tcp.flag_urg, tcp.flag_ack, tcp.flag_psh))
-        print(TAB_3 + 'RST: {}, SYN: {}, FIN:{}'.format(tcp.flag_rst, tcp.flag_syn, tcp.flag_fin))
-
-        if len(tcp.data) > 0:
-
-            # HTTP
-            if tcp.src_port == 80 or tcp.dest_port == 80:
-                print(TAB_2 + 'HTTP Data:')
-                try:
-                    http = HTTP(tcp.data)
-                    http_info = str(http.data).split('\n')
-                    for line in http_info:
-                        print(DATA_TAB_3 + str(line))
-                except:
-                    print(format_multi_line(DATA_TAB_3, tcp.data))
-            else:
-                print(TAB_2 + 'TCP Data:')
-                print(format_multi_line(DATA_TAB_3, tcp.data))
-
-    # UDP
-    elif ipv4.proto == 17:
-        udp = UDP(ipv4.data)
-        print(TAB_1 + 'UDP Segment:')
-        print(TAB_2 + 'Source Port: {}, Destination Port: {}, Length: {}'.format(udp.src_port, udp.dest_port, udp.size))
-
-    # Other IPv4
-    else:
-        print(TAB_1 + 'Other IPv4 Data:')
-        print(format_multi_line(DATA_TAB_2, ipv4.data))
-
 fila = []
 
 def show():
     filter = ['ipv4', 'ipv6', 'other']
     idx = 0
-    if len(sys.argv)>1:
-        filter = sys.argv[1:]
+    if args.filter != None:
+        filter = args.filter
     print("[s] Filter: {}".format(filter))
     global fila
     while True:
-        print("[s] {} {}".format(idx, len(fila)))  
         if idx >= len(fila):
             time.sleep( 0.5 )
             continue
@@ -97,8 +43,6 @@ def show():
             print( eth.toJSON())
         elif eth.prototype == 34525 and 'ipv6' in filter:
             print(TAB_1 + 'IPv6 Packet:')
-
-            ipv6 = eth.data
             print( eth.toJSON())
         elif  'other' in filter:
             if  eth.prototype == 2054:
@@ -108,27 +52,95 @@ def show():
 
         time.sleep( 0.1)
 
-
-
 def read():
-    pcap = Pcap('capture.pcap')
-    conn = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+    conn = None
+    if args.file != None:
+        pcap = Pcap(args.file, True,1)
+    else:
+        pcap = Pcap('capture.pcap')
+        conn = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
+
     global fila
     while True:
-        raw_data, addr = conn.recvfrom(65535)
-        pcap.write(raw_data)
+        if conn!= None:
+            raw_data, addr = conn.recvfrom(65535)
+            pcap.write(raw_data)
+        else:
+            line = pcap.read()
+            if(line==None):
+                return
+            raw_data = line['data']
+        
         eth = Ethernet(raw_data)
 
-        fila.append(eth)  
-        print("[r] fila:{}".format(len(fila)))  
+        fila.append(eth)
         time.sleep( 0.3)
 
     pcap.close()
 
-from multiprocessing import Process, Pool
-import threading
+async def showSocket(websocket, path):
+    global idShow
+    midShow = idShow
+    idShow = idShow+1
+    filter = ['ipv4', 'ipv6', 'other']
+    idx = 0
+    if len(sys.argv)>1:
+        filter = sys.argv[1:]
+    print("[s] Filter: {}".format(filter))
+    global fila
+    while True:
+        print("[s-{}] {} {}".format(midShow, idx, len(fila)))  
+        if idx >= len(fila):
+            time.sleep( 0.5 )
+            continue
+        eth = fila[idx]
+        idx = idx+1
 
-def main():  
+        await websocket.send(eth.toJSON())
+        await asyncio.sleep(0.2)
+
+# HTTPRequestHandler class
+class SnifferHTTPServer_RequestHandler(BaseHTTPRequestHandler):
+    def startRead(self):
+        global thRead
+        if(thRead == None):
+            thRead = threading.Thread(target=read)
+            thRead.start()
+
+    def startServer(self):
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        start_server = websockets.serve(showSocket, '127.0.0.1', 5678)
+        asyncio.get_event_loop().run_until_complete(start_server)
+        asyncio.get_event_loop().run_forever()
+
+    # GET
+    def do_GET(self):
+        print(self.path)
+        self.startRead()
+        thRead = threading.Thread(target=self.startServer)
+        thRead.start()
+        content = self.handle_http()
+        self.wfile.write(content)
+
+    def handle_http(self):
+        response_content = ""
+        response_content = open("index.html")
+        response_content = response_content.read()
+
+        self.send_response(200)
+        self.send_header('Content-type', "text/html")
+        self.end_headers()
+        return bytes(response_content, "UTF-8")
+
+def runServer():
+  print('starting server...')
+
+  server_address = ('127.0.0.1', 8081)
+  httpd = HTTPServer(server_address, SnifferHTTPServer_RequestHandler)
+  print('running server...')
+  httpd.serve_forever()
+
+def normalMode():  
     global fila
     x = threading.Thread(target=read)
     x.start()
@@ -136,4 +148,17 @@ def main():
     y = threading.Thread(target=show)
     y.start()
 
-main()
+def socketMode():
+    thServer = threading.Thread(target=runServer)
+    thServer.start()    
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--file', '-f', help="filename", type= str)
+    parser.add_argument('--filter', '-s', help="filter: ipv4, ipv6", type= str)
+    parser.add_argument('--server', '-w', help="mode server", action='store_true', default=False)
+    args = parser.parse_args()
+    if args.server: 
+        socketMode()
+    else:
+        normalMode()
