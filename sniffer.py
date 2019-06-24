@@ -22,15 +22,18 @@ import threading
 idShow = 0
 thRead = None
 TAB_1 = '\t - '
-fila = []
+filas = []
 
 def show():
     filter = ['ipv4', 'ipv6', 'other']
     idx = 0
+    global args
     if args.filter != None:
         filter = args.filter
     print("[s] Filter: {}".format(filter))
-    global fila
+    global filas
+    fila =[]
+    filas.append(fila)
     while True:
         if idx >= len(fila):
             time.sleep( 0.5 )
@@ -60,7 +63,7 @@ def read():
         pcap = Pcap('capture.pcap')
         conn = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
 
-    global fila
+    global filas
     while True:
         if conn!= None:
             raw_data, addr = conn.recvfrom(65535)
@@ -73,7 +76,8 @@ def read():
         
         eth = Ethernet(raw_data)
 
-        fila.append(eth)
+        for fila in filas:
+            fila.append(eth)
         time.sleep( 0.3)
 
     pcap.close()
@@ -84,20 +88,29 @@ async def showSocket(websocket, path):
     idShow = idShow+1
     filter = ['ipv4', 'ipv6', 'other']
     idx = 0
-    if len(sys.argv)>1:
-        filter = sys.argv[1:]
+    global args
+    if args.filter != None:
+        filter = args.filter
     print("[s] Filter: {}".format(filter))
-    global fila
-    while True:
-        print("[s-{}] {} {}".format(midShow, idx, len(fila)))  
-        if idx >= len(fila):
-            time.sleep( 0.5 )
-            continue
-        eth = fila[idx]
-        idx = idx+1
+    global filas
+    fila =[]
+    filas.append(fila)
+    try:
+        while True:
+            print("[s-{}] {} {}".format(midShow, idx, len(fila)))  
+            if idx >= len(fila):
+                time.sleep( 0.5 )
+                continue
+            eth = fila[idx]
+            idx = idx+1
+            eth.session = midShow
+            if (eth.prototype == 2048 and 'ipv4' in filter ) or (
+                eth.prototype == 34525 and 'ipv6' in filter) or 'other' in filter:
+                await websocket.send(eth.toJSON())
+                await asyncio.sleep(0.2)
 
-        await websocket.send(eth.toJSON())
-        await asyncio.sleep(0.2)
+    finally:
+        filas.remove(fila)
 
 # HTTPRequestHandler class
 class SnifferHTTPServer_RequestHandler(BaseHTTPRequestHandler):
@@ -157,6 +170,7 @@ if __name__ == "__main__":
     parser.add_argument('--file', '-f', help="filename", type= str)
     parser.add_argument('--filter', '-s', help="filter: ipv4, ipv6", type= str)
     parser.add_argument('--server', '-w', help="mode server", action='store_true', default=False)
+    global args
     args = parser.parse_args()
     if args.server: 
         socketMode()

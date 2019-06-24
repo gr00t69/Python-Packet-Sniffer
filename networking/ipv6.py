@@ -1,6 +1,7 @@
 import struct
 from general import *
 from networking.icmpv6 import ICMPv6
+from networking.tcp import TCP
 from networking.hop_by_hop import HopByHop
 from networking.abstract_protocol import AbstractProtocol
 from networking.udp import UDP
@@ -19,13 +20,16 @@ class IPv6(AbstractProtocol):
         self.destination_address = get_ipv6_address(raw_data[24:40])
         data = raw_data[40:]
         self.extension_header = self.__extract_extension_header(data)
-        self.data = byteDataToString(data)
+        if self.extension_header == None:
+            self.data = byteDataToString(data)
 
     def ipv6(self, addr):
         return '.'.join(map(str, addr))
 
     def __extract_extension_header(self, data):
-        if self.next_header == 58:
+        if self.next_header == 6:
+            return TCP(data)
+        elif self.next_header == 58:
             return ICMPv6(data)
         elif self.next_header == 0:
             return HopByHop(data)

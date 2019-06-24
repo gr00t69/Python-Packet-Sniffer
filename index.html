@@ -2,19 +2,164 @@
 <html>
     <head>
         <title>WebSocket demo</title>
+        <style>
+.accordions{
+    /* width:600px; */
+    margin:0 auto;
+    border:1px solid #ccc;
+}
+.accordion-item input{
+	display:none;
+}
+.accordion-item label{
+    display:block;
+    border:1px solid #ccc;
+    background:#e5e5e5;
+    cursor:pointer;
+	padding:5px 3px;
+}
+.accordion-content{
+    height: 0px;
+    overflow: hidden;
+    -webkit-transition: height 0.3s ease-in-out;
+    -moz-transition: height 0.3s ease-in-out;
+    -o-transition: height 0.3s ease-in-out;
+    -ms-transition: height 0.3s ease-in-out;
+    transition: height 0.3s ease-in-out;
+ }
+[id^=accordion]:checked ~ .accordion-content {
+    height: 300px;
+    overflow: auto;
+}
+        </style>
     </head>
     <body>
+        <div class="accordions"> 
+           
+        </div>	
+
+        <!-- Templates -->
+        <template>
+                <div class="accordion-item">
+                    <input type="checkbox" name="accordion"  />
+                    <label for= "accordion-3"></label>
+                    <div class="accordion-content"></div>
+                </div>
+            </template>
+        </body>
         <script>
-            var ws = new WebSocket("ws://127.0.0.1:5678/"),
-                messages = document.createElement('ul');
-            ws.onmessage = function (event) {
-                var messages = document.getElementsByTagName('ul')[0],
-                    message = document.createElement('li'),
-                    content = document.createTextNode(event.data);
-                message.appendChild(content);
-                messages.appendChild(message);
-            };
-            document.body.appendChild(messages);
+    function addLine(table, key, value){
+        tr = document.createElement('tr');
+        if(key!=null){
+            td1 = document.createElement('td');
+            td1.textContent =  key+":";
+            tr.appendChild(td1)
+        }
+        if(value!=null){
+            td2 = document.createElement('td');
+            td2.textContent = value;
+            tr.appendChild(td2)
+        }
+        table.appendChild(tr)
+    }
+    function addFieldsTable(table,obj){
+        if(obj.className != undefined && obj.className == "TCP"){
+            addFieldsTcp(table, obj);
+            return
+        }
+        Object.keys(obj).forEach( key =>{
+                if((obj[key] instanceof String) || obj[key] !== Object(obj[key]))
+                    addLine(table, key, obj[key]);
+        })
+    }    
+
+    function addFieldsTcp(table,obj){
+        Object.keys(obj).forEach( key =>{
+                if((obj[key] instanceof String) || obj[key] !== Object(obj[key]))
+                    if(!key.startsWith('flag'))
+                        addLine(table, key, obj[key]);
+        })
+        addLine(table, null, "urg: "+obj.flag_urg+"  ack: "+obj.flag_ack+"  psh: "+obj.flag_psh
+            +"  rst: "+obj.flag_rst+"  syn: "+obj.flag_syn+"  fin: "+obj.flag_fin)
+    }            
+
+            count = 0;
+
+    function showContent(el, name, data) {
+        count++;
+        sId = "accordion-"+count;
+        var temp = document.getElementsByTagName("template")[0];
+        item = temp.content.querySelector("div");
+        a = document.importNode(item, true);
+        a.getElementsByTagName('label')[0].textContent = name;
+        content = a.getElementsByClassName('accordion-content')[0]
+        table = document.createElement('table')
+        content.appendChild(table)
+        addFieldsTable(table, data);
+        
+        a.getElementsByTagName('label')[0].setAttribute("for", sId);
+        a.getElementsByTagName('input')[0].id=sId;
+        el.getElementsByClassName("accordions")[0].appendChild(a);
+        return a;
+    }
+    // showContent("Teste1", "oi");
+
+    var ws = new WebSocket("ws://127.0.0.1:5678/");
+
+    function montaNome(eth){
+        nome = eth.className
+            +" | Source.:"+eth.src_mac+" | Dest.: "+eth.dest_mac +" | ";
+        obj = eth
+        while(typeof obj.data== 'object' || typeof obj.extension_header== 'object')
+            obj = obj.extension_header || obj.data
+        
+        nome+= 'protocol: '+obj.className+" | ";
+        if(obj.className == 'TCP'){
+            if(obj.flag_urg > 0)
+                nome = nome +"urg: "+obj.flag_urg
+            if(obj.flag_ack > 0)
+                nome = nome +"  ack: "+obj.flag_ack
+            if(obj.flag_psh > 0)
+                nome = nome +"  psh: "+obj.flag_psh
+            if(obj.flag_rst > 0)
+                nome = nome +"  rst: "+obj.flag_rst
+            if(obj.flag_syn > 0)
+                nome = nome +"  syn: "+obj.flag_syn
+            if(obj.flag_fin > 0)
+                nome = nome +"  fin: "+obj.flag_fin
+        }
+        return nome;
+    }
+
+    ws.onmessage = function (event) {
+        eth = JSON.parse(event.data);
+         
+        pai = showContent(document,montaNome(eth), eth)
+             
+        content = pai.getElementsByClassName('accordion-content')[0]
+        obj = eth.data;
+        
+        table = document.createElement('table')
+        content.appendChild(table)
+        while(obj !=null ){
+            tr = document.createElement('tr');
+            th = document.createElement('th');
+            th.textContent = obj.className
+            tr.appendChild(th)
+            table.appendChild(tr)
+            addFieldsTable(table, obj);
+
+            if(obj.extension_header != undefined &&   !(obj.extension_header instanceof String))
+                obj = obj.extension_header
+            else if(obj.data != undefined &&  !(typeof obj.data == 'string')){
+                obj = obj.data;
+            }else 
+                obj = null;
+        }
+
+    };
         </script>
     </body>
 </html>
+
+ 
