@@ -2,6 +2,7 @@ import socket
 import struct
 from general import *
 from networking.ipv4 import IPv4
+from networking.arp import ARP
 from networking.ipv6 import IPv6
 from networking.abstract_protocol import AbstractProtocol
 
@@ -21,6 +22,8 @@ class Ethernet(AbstractProtocol):
             return IPv4(data)
         elif self.prototype == 34525:
             return IPv6(data)
+        elif self.prototype == 2054:
+            return ARP(data)
         return format_multi_line('', data)
 
 
