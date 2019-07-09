@@ -22,3 +22,6 @@ Command file:<br>
 >sniffer.py --file filename<br>
 This command loads the ".pcap" file. The path of the file should be
 is in the same directory as the sniffer.py file.
+<br>
+
+![Alt text](Other/captura.png?raw=true "Captura de tela")
