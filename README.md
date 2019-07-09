@@ -8,11 +8,11 @@
 -----------------------
 
 Comnado filter:
->sniffer.py --filter [arp, ipv4, ipv6]<br>
+>sniffer.py --filter [ipv4, ipv6]<br>
 This command tells the program which packets to fetch. If no filter
 the captured packets will be IPv4.
 
-erver command:
+Command server:
 >sniffer.py --server<br>
 This command initializes the local server, thus allowing the view in the browser
 captured packet information. This information is displayed in real time and displays all available information from the filtered packet. To access the preview page,
